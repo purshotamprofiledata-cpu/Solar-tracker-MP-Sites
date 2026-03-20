@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solar Plant Work Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Noto+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --sun: #E07B00;
+  --sun-glow: #F5A623;
+  --sky: #F0F4F8;
+  --sky-mid: #E2EAF2;
+  --sky-light: #D4E0EC;
+  --panel: #FFFFFF;
+  --panel-border: #C8D8E8;
+  --green: #1A9E50;
+  --green-d: #158040;
+  --orange: #E67E22;
+  --red: #C0392B;
+  --blue: #2176AE;
+  --text: #1A2A3A;
+  --text-dim: #5A7A9A;
+  --c1: #C0392B; --c1b: rgba(192,57,43,0.1);
+  --c2: #1A9E50; --c2b: rgba(26,158,80,0.1);
+  --c3: #7D3C98; --c3b: rgba(125,60,152,0.1);
+  --c4: #E07B00; --c4b: rgba(224,123,0,0.1);
+  --c5: #2176AE; --c5b: rgba(33,118,174,0.1);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'Noto Sans', sans-serif;
+  background: var(--sky);
+  color: var(--text);
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse at 20% 0%, rgba(224,123,0,0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(33,118,174,0.05) 0%, transparent 50%);
+}
+
+/* ── HEADER ── */
+header {
+  background: linear-gradient(135deg, #FFFFFF 0%, #EEF4FA 100%);
+  border-bottom: 2px solid var(--sun);
+  padding: 0 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 64px;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+}
+.logo {
+  display: flex; align-items: center; gap: 12px;
+}
+.logo-icon {
+  width: 38px; height: 38px;
+  background: linear-gradient(135deg, var(--sun), var(--sun-glow));
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  box-shadow: 0 0 16px rgba(224,123,0,0.3);
+}
+.logo h1 {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 20px; font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text);
+}
+.logo span { color: var(--sun); }
+.header-meta {
+  display: flex; align-items: center; gap: 16px;
+}
+.month-selector {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--sky-mid);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 6px 12px;
+}
+.month-selector label {
+  font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;
+}
+.month-selector select {
+  background: transparent; border: none; color: var(--sun);
+  font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: 700;
+  cursor: pointer; outline: none;
+}
+.month-selector select option { background: #fff; color: var(--text); }
+
+/* ── LAYOUT ── */
+.container { display: flex; height: calc(100vh - 64px); }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: 220px; min-width: 220px;
+  background: #FFFFFF;
+  border-right: 1px solid var(--panel-border);
+  overflow-y: auto;
+  padding: 12px 0;
+}
+.sidebar-section {
+  padding: 8px 16px 4px;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px;
+  color: var(--text-dim); font-weight: 600;
+}
+.site-btn {
+  width: 100%; text-align: left;
+  background: none; border: none;
+  padding: 8px 16px;
+  color: var(--text-dim);
+  font-family: 'Rajdhani', sans-serif; font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s;
+  display: flex; align-items: center; justify-content: space-between;
+  letter-spacing: 0.5px;
+}
+.site-btn:hover { background: var(--sky-light); color: var(--text); }
+.site-btn.active { background: linear-gradient(90deg, rgba(224,123,0,0.12), transparent);
+  color: var(--sun); border-left: 3px solid var(--sun); padding-left: 13px; }
+.site-status-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--panel-border);
+}
+.site-status-dot.done { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.site-status-dot.partial { background: var(--sun); box-shadow: 0 0 6px var(--sun); }
+
+/* ── MAIN ── */
+.main { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+/* ── TABS ── */
+.tabs {
+  display: flex; gap: 4px;
+  background: #FFFFFF;
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 20px;
+  border: 1px solid var(--panel-border);
+  width: fit-content;
+}
+.tab-btn {
+  padding: 8px 18px;
+  background: none; border: none; border-radius: 7px;
+  color: var(--text-dim); font-family: 'Rajdhani', sans-serif;
+  font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+  letter-spacing: 0.5px;
+}
+.tab-btn.active {
+  background: var(--sky-light);
+  color: var(--text);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.tab-btn:hover:not(.active) { color: var(--text); }
+
+/* ── SITE HEADER ── */
+.site-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px;
+}
+.site-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 26px; font-weight: 700;
+  letter-spacing: 1px;
+}
+.site-title span { color: var(--sun); }
+.btn-group { display: flex; gap: 8px; }
+
+/* ── BUTTONS ── */
+.btn {
+  padding: 8px 16px;
+  border: none; border-radius: 7px;
+  font-family: 'Rajdhani', sans-serif; font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px;
+  display: flex; align-items: center; gap: 6px;
+}
+.btn-primary { background: var(--sun); color: #fff; }
+.btn-primary:hover { background: var(--sun-glow); transform: translateY(-1px); }
+.btn-success { background: var(--green-d); color: white; }
+.btn-success:hover { background: var(--green); transform: translateY(-1px); }
+.btn-outline {
+  background: transparent; color: var(--text-dim);
+  border: 1px solid var(--panel-border);
+}
+.btn-outline:hover { border-color: var(--sun); color: var(--sun); }
+.btn-danger { background: var(--red); color: white; }
+.btn-danger:hover { opacity: 0.85; }
+
+/* ── CYCLES GRID ── */
+.cycles-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 16px; margin-bottom: 20px;
+}
+.cycle-card {
+  background: #FFFFFF;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px; overflow: hidden;
+  transition: box-shadow 0.2s;
+}
+.cycle-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+.cycle-header {
+  padding: 12px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--panel-border);
+}
+.cycle-label {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px; font-weight: 700; letter-spacing: 1px;
+}
+.cycle-badge {
+  font-size: 11px; font-weight: 600; padding: 2px 10px;
+  border-radius: 20px; letter-spacing: 0.5px;
+}
+.c1-theme .cycle-header { background: var(--c1b); border-left: 4px solid var(--c1); }
+.c1-theme .cycle-label { color: var(--c1); }
+.c1-theme .cycle-badge { background: var(--c1b); color: var(--c1); }
+.c2-theme .cycle-header { background: var(--c2b); border-left: 4px solid var(--c2); }
+.c2-theme .cycle-label { color: var(--c2); }
+.c2-theme .cycle-badge { background: var(--c2b); color: var(--c2); }
+.c3-theme .cycle-header { background: var(--c3b); border-left: 4px solid var(--c3); }
+.c3-theme .cycle-label { color: var(--c3); }
+.c3-theme .cycle-badge { background: var(--c3b); color: var(--c3); }
+.c4-theme .cycle-header { background: var(--c4b); border-left: 4px solid var(--c4); }
+.c4-theme .cycle-label { color: var(--c4); }
+.c4-theme .cycle-badge { background: var(--c4b); color: var(--c4); }
+.c5-theme .cycle-header { background: var(--c5b); border-left: 4px solid var(--c5); }
+.c5-theme .cycle-label { color: var(--c5); }
+.c5-theme .cycle-badge { background: var(--c5b); color: var(--c5); }
+
+.cycle-body { padding: 14px 16px; }
+.cycle-stats {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 10px;
+  margin-bottom: 14px;
+}
+.stat-box { text-align: center; }
+.stat-num {
+  font-family: 'Rajdhani', sans-serif; font-size: 22px; font-weight: 700;
+  line-height: 1;
+}
+.stat-lbl { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; margin-top: 2px; }
+
+.progress-bar-wrap {
+  background: rgba(0,0,0,0.08); border-radius: 4px;
+  height: 6px; margin-bottom: 14px; overflow: hidden;
+}
+.progress-bar {
+  height: 100%; border-radius: 4px;
+  transition: width 0.5s ease;
+}
+.c1-theme .progress-bar { background: var(--c1); }
+.c2-theme .progress-bar { background: var(--c2); }
+.c3-theme .progress-bar { background: var(--c3); }
+.c4-theme .progress-bar { background: var(--c4); }
+.c5-theme .progress-bar { background: var(--c5); }
+
+/* ── FORM ── */
+.form-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; min-width: 0; }
+.form-grid .field input, .form-grid .field select { min-width: 0; width: 100%; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-dim); font-weight: 600;
+}
+.field input, .field select, .field textarea {
+  background: var(--sky);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px; color: var(--text);
+  font-family: 'Noto Sans', sans-serif; font-size: 13px;
+  padding: 7px 10px; outline: none;
+  transition: border-color 0.2s;
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  border-color: var(--sun);
+}
+.field textarea { resize: vertical; min-height: 60px; }
+.field select option { background: #fff; }
+.field input[type="number"] { -moz-appearance: textfield; }
+
+/* ── DATA TABLE ── */
+.table-wrap { overflow-x: auto; margin-top: 10px; }
+table {
+  width: 100%; border-collapse: collapse;
+  font-size: 12px;
+}
+thead th {
+  background: var(--sky-mid);
+  padding: 8px 10px; text-align: left;
+  font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.8px; color: var(--text-dim);
+  border-bottom: 1px solid var(--panel-border);
+  white-space: nowrap;
+}
+tbody tr { border-bottom: 1px solid rgba(0,0,0,0.05); transition: background 0.1s; }
+tbody tr:hover { background: rgba(0,0,0,0.02); }
+tbody td { padding: 7px 10px; color: var(--text); }
+.pct-pill {
+  display: inline-block; padding: 2px 8px; border-radius: 20px;
+  font-size: 11px; font-weight: 600;
+}
+.pct-high { background: rgba(26,158,80,0.15); color: var(--green); }
+.pct-mid  { background: rgba(224,123,0,0.15); color: var(--sun); }
+.pct-low  { background: rgba(192,57,43,0.15); color: var(--red); }
+.del-btn {
+  background: none; border: none; color: var(--red);
+  cursor: pointer; font-size: 14px; opacity: 0.6;
+  transition: opacity 0.2s; padding: 2px 6px; border-radius: 4px;
+}
+.del-btn:hover { opacity: 1; background: rgba(192,57,43,0.1); }
+
+/* ── OTHER WORK FORMS ── */
+.work-form {
+  background: #FFFFFF;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px; padding: 16px;
+  margin-bottom: 16px;
+}
+.work-form h3 {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px; font-weight: 700; margin-bottom: 14px;
+  display: flex; align-items: center; gap: 8px;
+  color: var(--text);
+}
+.section-icon { font-size: 18px; }
+
+/* ── DASHBOARD ── */
+.dashboard-grid {
+  display: grid; grid-template-columns: repeat(3,1fr);
+  gap: 14px; margin-bottom: 20px;
+}
+.kpi-card {
+  background: #FFFFFF;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px; padding: 16px;
+}
+.kpi-title { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.kpi-val {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 32px; font-weight: 700; line-height: 1;
+}
+.kpi-sub { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+.kpi-accent-sun { color: var(--sun); }
+.kpi-accent-green { color: var(--green); }
+.kpi-accent-blue { color: var(--blue); }
+.kpi-accent-red { color: var(--red); }
+
+.sites-progress {
+  background: #FFFFFF;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px; padding: 16px;
+}
+.sites-progress h3 {
+  font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: 700;
+  margin-bottom: 14px; color: var(--text);
+}
+.site-progress-row {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 8px;
+}
+.spn { font-size: 12px; width: 120px; color: var(--text-dim); flex-shrink: 0; }
+.sp-bar-wrap { flex: 1; background: rgba(0,0,0,0.08); border-radius: 4px; height: 6px; }
+.sp-bar { height: 100%; border-radius: 4px; background: var(--sun); }
+.sp-pct { font-size: 11px; color: var(--text-dim); width: 40px; text-align: right; }
+
+/* ── EXPORT ── */
+.export-section {
+  background: #FFFFFF;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px; padding: 20px;
+  margin-top: 20px;
+}
+.export-section h3 {
+  font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 700;
+  margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+  color: var(--text);
+}
+.export-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+.export-card {
+  background: var(--sky-light);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px; padding: 14px;
+  text-align: center; cursor: pointer;
+  transition: all 0.2s;
+}
+.export-card:hover { border-color: var(--sun); transform: translateY(-2px); }
+.export-card .ico { font-size: 24px; margin-bottom: 6px; }
+.export-card .ec-title { font-family: 'Rajdhani', sans-serif; font-size: 14px; font-weight: 700; color: var(--text); }
+.export-card .ec-sub { font-size: 11px; color: var(--text-dim); margin-top: 3px; }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--green-d); color: white;
+  padding: 10px 20px; border-radius: 8px;
+  font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: 600;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  transform: translateY(80px); opacity: 0;
+  transition: all 0.3s; z-index: 1000;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+
+/* ── EMPTY STATE ── */
+.empty { text-align: center; padding: 30px; color: var(--text-dim); font-size: 13px; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--sky); }
+::-webkit-scrollbar-thumb { background: var(--sky-light); border-radius: 3px; }
+
+.full-w { grid-column: 1 / -1; }
+
+/* ── SITE MANAGE ── */
+.add-site-wrap {
+  padding: 8px 12px 12px;
+  border-top: 1px solid var(--panel-border);
+  margin-top: 4px;
+}
+.add-site-row {
+  display: flex; gap: 6px; align-items: center;
+}
+.add-site-input {
+  flex: 1;
+  background: var(--sky);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px; color: var(--text);
+  font-family: 'Noto Sans', sans-serif; font-size: 12px;
+  padding: 6px 8px; outline: none;
+  transition: border-color 0.2s;
+}
+.add-site-input:focus { border-color: var(--sun); }
+.add-site-btn {
+  background: var(--sun); border: none; border-radius: 6px;
+  color: #fff; font-size: 16px; font-weight: 700;
+  width: 28px; height: 28px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: background 0.2s;
+}
+.add-site-btn:hover { background: var(--sun-glow); }
+.site-del-btn {
+  background: none; border: none; color: var(--red);
+  cursor: pointer; font-size: 12px; opacity: 0;
+  transition: opacity 0.15s; padding: 2px 4px; border-radius: 3px;
+  flex-shrink: 0;
+}
+.site-btn:hover .site-del-btn { opacity: 0.7; }
+.site-del-btn:hover { opacity: 1 !important; background: rgba(192,57,43,0.1); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">☀️</div>
+    <h1>Solar Plant <span>Tracker</span></h1>
+  </div>
+  <div class="header-meta">
+    <div class="month-selector">
+      <label>Month</label>
+      <select id="monthSel" onchange="changeMonth()"></select>
+    </div>
+    <button class="btn btn-primary" onclick="exportExcel()">⬇ Export Excel</button>
+    <button class="btn btn-outline" onclick="showTab('dashboard')">📊 Dashboard</button>
+  </div>
+</header>
+
+<div class="container">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section">All Sites</div>
+    <div id="siteList"></div>
+    <div class="add-site-wrap">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);font-weight:600;margin-bottom:6px;">+ New Site</div>
+      <div class="add-site-row">
+        <input class="add-site-input" id="newSiteInput" type="text" placeholder="Site naam likho" onkeydown="if(event.key==='Enter')addSite()">
+        <button class="add-site-btn" onclick="addSite()" title="Site Add Karo">+</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main" id="mainContent"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Sites (dynamic, stored in localStorage) ──────────────────────────────
+const DEFAULT_SITES = ["BEEKALPUR","JAITHARI","SILWANI","SAIKHEDA","BORAS","BHOPATPUR","KODAJAMUNIYA","DEORI"];
+function getSites() {
+  try { return JSON.parse(localStorage.getItem('spt_sites')) || [...DEFAULT_SITES]; }
+  catch { return [...DEFAULT_SITES]; }
+}
+function saveSites(arr) { localStorage.setItem('spt_sites', JSON.stringify(arr)); }
+let SITES = getSites();
+const CYCLE_COLORS = ['c1','c2','c3','c4','c5'];
+const CYCLE_NAMES  = ['Cycle 1','Cycle 2','Cycle 3','Cycle 4','Cycle 5'];
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const YEARS  = [2024,2025,2026,2027];
+
+let currentMonth = new Date().getMonth();
+let currentYear  = new Date().getFullYear();
+let currentSite  = SITES[0];
+let currentTab   = 'cleaning';
+
+// ── LocalStorage helpers ──────────────────────────────────────────────────
+function key(site, mon, yr) { return `spt_${yr}_${mon}_${site}`; }
+function otherKey(type, mon, yr) { return `spt_other_${type}_${yr}_${mon}`; }
+
+function getData(site, mon, yr) {
+  try { return JSON.parse(localStorage.getItem(key(site, mon, yr))) || {cycles:{1:[],2:[],3:[],4:[],5:[]}}; }
+  catch { return {cycles:{1:[],2:[],3:[],4:[],5:[]}}; }
+}
+function saveData(site, mon, yr, data) {
+  localStorage.setItem(key(site, mon, yr), JSON.stringify(data));
+  updateSidebarDots();
+}
+function getOther(type, mon, yr) {
+  try { return JSON.parse(localStorage.getItem(otherKey(type,mon,yr))) || []; }
+  catch { return []; }
+}
+function saveOther(type, mon, yr, arr) {
+  localStorage.setItem(otherKey(type,mon,yr), JSON.stringify(arr));
+}
+
+// ── Month selector ────────────────────────────────────────────────────────
+function initMonthSel() {
+  const sel = document.getElementById('monthSel');
+  YEARS.forEach(y => MONTHS.forEach((m,mi) => {
+    const opt = document.createElement('option');
+    opt.value = `${mi}_${y}`;
+    opt.textContent = `${m} ${y}`;
+    if (mi === currentMonth && y === currentYear) opt.selected = true;
+    sel.appendChild(opt);
+  }));
+}
+function changeMonth() {
+  const [m,y] = document.getElementById('monthSel').value.split('_');
+  currentMonth = +m; currentYear = +y;
+  renderMain();
+  updateSidebarDots();
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────────
+function updateSidebarDots() {
+  SITES = getSites();
+  const list = document.getElementById('siteList');
+  list.innerHTML = '';
+  SITES.forEach(site => {
+    const d = getData(site, currentMonth, currentYear);
+    let total=0, cleaned=0;
+    [1,2,3,4,5].forEach(c => {
+      const rows = d.cycles[c]||[];
+      rows.forEach(r => { cleaned += +r.cleaned||0; });
+      if (rows.length) { const first = rows[0]; total += +first.total||0; }
+    });
+    const dot_class = total===0?'':cleaned>=total?'done':'partial';
+    list.innerHTML += `
+      <button class="site-btn ${site===currentSite?'active':''}" onclick="selectSite('${site}')">
+        <span style="flex:1;text-align:left;">${site}</span>
+        <span class="site-status-dot ${dot_class}" style="margin-right:4px;"></span>
+        <button class="site-del-btn" onclick="event.stopPropagation();deleteSite('${site}')" title="Site Delete Karo">✕</button>
+      </button>`;
+  });
+}
+
+function addSite() {
+  const inp = document.getElementById('newSiteInput');
+  const name = inp.value.trim().toUpperCase();
+  if (!name) { toast('Site naam khaali hai!','var(--red)'); return; }
+  const sites = getSites();
+  if (sites.includes(name)) { toast('Yeh site pehle se exist karti hai!','var(--orange)'); return; }
+  sites.push(name);
+  saveSites(sites);
+  SITES = sites;
+  inp.value = '';
+  currentSite = name;
+  currentTab = 'cleaning';
+  toast('✓ Site add ho gayi: ' + name);
+  updateSidebarDots();
+  renderMain();
+}
+
+function deleteSite(site) {
+  if (!confirm('Site "' + site + '" delete karna chahte ho?\nIs site ka saara data bhi delete ho jayega.')) return;
+  const sites = getSites().filter(s => s !== site);
+  if (sites.length === 0) { toast('Kam se kam 1 site zaroori hai!','var(--red)'); return; }
+  saveSites(sites);
+  SITES = sites;
+  // Remove all localStorage data for this site
+  const keysToDelete = [];
+  for (let i=0; i<localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.includes('_' + site)) keysToDelete.push(k);
+  }
+  keysToDelete.forEach(k => localStorage.removeItem(k));
+  if (currentSite === site) currentSite = sites[0];
+  toast('Site delete ho gayi: ' + site, 'var(--orange)');
+  updateSidebarDots();
+  renderMain();
+}
+function selectSite(s) { currentSite=s; currentTab='cleaning'; renderMain(); updateSidebarDots(); }
+
+// ── Toast ─────────────────────────────────────────────────────────────────
+function toast(msg, color='var(--green-d)') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.background = color;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── Tab ───────────────────────────────────────────────────────────────────
+function showTab(tab) { currentTab=tab; renderMain(); }
+
+// ── Main render ───────────────────────────────────────────────────────────
+function renderMain() {
+  if (currentTab==='dashboard') { renderDashboard(); return; }
+  if (currentTab==='housekeeping') { renderOtherWork('housekeeping','🏠 House Keeping Log'); return; }
+  if (currentTab==='grass') { renderOtherWork('grass','🌿 Grass Cutting Log'); return; }
+  if (currentTab==='maintenance') { renderOtherWork('maintenance','🔧 Maintenance Work Log'); return; }
+  renderCleaning();
+}
+
+// ── CLEANING ──────────────────────────────────────────────────────────────
+function renderCleaning() {
+  const data = getData(currentSite, currentMonth, currentYear);
+  const m = MONTHS[currentMonth];
+
+  let cycleCards = '';
+  [1,2,3,4,5].forEach(c => {
+    const rows = data.cycles[c]||[];
+    const totalMods = rows.length ? (+rows[0].total||0) : 0;
+    const cleaned   = rows.reduce((s,r)=>s+(+r.cleaned||0),0);
+    const pending   = Math.max(0, totalMods - cleaned);
+    const pct       = totalMods ? Math.round(cleaned/totalMods*100) : 0;
+    const status    = pct===100?'✅ Complete':pct>0?'⏳ In Progress':'⬜ Not Started';
+    const theme     = CYCLE_COLORS[c-1];
+
+    let tableRows = rows.length ? rows.map((r,i)=>`
+      <tr>
+        <td>${r.date||'—'}</td>
+        <td>${(+r.cleaned||0).toLocaleString()}</td>
+        <td>${(+r.total-rows.slice(0,i+1).reduce((s,x)=>s+(+x.cleaned||0),0)+rows.slice(i+1).reduce((s,x)=>s+(+x.cleaned||0),0) > 0 ? Math.max(0,totalMods-rows.slice(0,i+1).reduce((s,x)=>s+(+x.cleaned||0),0)) : 0).toLocaleString()}</td>
+        <td>${r.supervisor||'—'}</td>
+        <td>${r.team||'—'}</td>
+        <td>${r.remarks||'—'}</td>
+        <td><button class="del-btn" onclick="deleteRow(${c},${i})">✕</button></td>
+      </tr>`).join('') : `<tr><td colspan="7" class="empty">Koi entry nahi — neeche form se add karo</td></tr>`;
+
+    cycleCards += `
+    <div class="cycle-card ${theme}-theme">
+      <div class="cycle-header">
+        <span class="cycle-label">${CYCLE_NAMES[c-1]}</span>
+        <span class="cycle-badge">${status}</span>
+      </div>
+      <div class="cycle-body">
+        <div class="cycle-stats">
+          <div class="stat-box">
+            <div class="stat-num">${totalMods.toLocaleString()}</div>
+            <div class="stat-lbl">Total</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num">${cleaned.toLocaleString()}</div>
+            <div class="stat-lbl">Cleaned</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num">${pct}%</div>
+            <div class="stat-lbl">Done</div>
+          </div>
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar" style="width:${pct}%"></div>
+        </div>
+        <!-- Add Entry Form -->
+        <div style="background:rgba(0,0,0,0.03);border-radius:8px;padding:12px;margin-bottom:12px;border:1px solid var(--panel-border);">
+          <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-weight:600;">+ New Entry</div>
+          <div class="form-grid">
+            <div class="field">
+              <label>Date</label>
+              <input type="date" id="d_date_${c}" value="${new Date().toISOString().split('T')[0]}">
+            </div>
+            <div class="field">
+              <label>Total Modules</label>
+              <input type="number" id="d_total_${c}" placeholder="${rows.length && rows[0].total ? rows[0].total : 'e.g. 11956'}" min="0" oninput="calcPending(${c})">
+            </div>
+            <div class="field">
+              <label>Cleaned Today</label>
+              <input type="number" id="d_cleaned_${c}" placeholder="e.g. 1568" min="0" oninput="calcPending(${c})">
+            </div>
+            <div class="field">
+              <label>Pending (Auto)</label>
+              <input type="number" id="d_pending_${c}" placeholder="Auto" readonly style="opacity:0.7;cursor:not-allowed;">
+            </div>
+            <div class="field">
+              <label>Supervisor</label>
+              <input type="text" id="d_sup_${c}" placeholder="Naam">
+            </div>
+            <div class="field">
+              <label>Team Size</label>
+              <input type="number" id="d_team_${c}" placeholder="e.g. 5" min="0">
+            </div>
+            <div class="field">
+              <label>Remarks</label>
+              <input type="text" id="d_rem_${c}" placeholder="Optional">
+            </div>
+          </div>
+          <button class="btn btn-success" style="margin-top:10px;font-size:13px;padding:7px 14px;" onclick="addEntry(${c})">+ Add Entry</button>
+        </div>
+        <!-- Table -->
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Date</th><th>Cleaned</th><th>Pending</th>
+              <th>Supervisor</th><th>Team</th><th>Remarks</th><th></th>
+            </tr></thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="site-header">
+      <div>
+        <div class="site-title">☀ <span>${currentSite}</span></div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:2px;">${m} ${currentYear} — Module Cleaning</div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-outline" onclick="showTab('housekeeping')">🏠 HK</button>
+        <button class="btn btn-outline" onclick="showTab('grass')">🌿 Grass</button>
+        <button class="btn btn-outline" onclick="showTab('maintenance')">🔧 Maint.</button>
+        <button class="btn btn-primary" onclick="exportExcel()">⬇ Excel</button>
+      </div>
+    </div>
+    <div class="cycles-grid">${cycleCards}</div>`;
+}
+
+function calcPending(c) {
+  const total   = parseFloat(document.getElementById('d_total_'  + c)?.value) || 0;
+  const cleaned = parseFloat(document.getElementById('d_cleaned_'+ c)?.value) || 0;
+  const pEl = document.getElementById('d_pending_' + c);
+  if (pEl) pEl.value = total > 0 ? Math.max(0, total - cleaned) : '';
+}
+
+function addEntry(cycle) {
+  const date    = document.getElementById(`d_date_${cycle}`).value;
+  const total   = document.getElementById(`d_total_${cycle}`).value;
+  const cleaned = document.getElementById(`d_cleaned_${cycle}`).value;
+  const sup     = document.getElementById(`d_sup_${cycle}`).value;
+  const team    = document.getElementById(`d_team_${cycle}`).value;
+  const rem     = document.getElementById(`d_rem_${cycle}`).value;
+
+  if (!date || !cleaned) { toast('Date aur Cleaned Modules zaroori hai!','var(--red)'); return; }
+
+  const data = getData(currentSite, currentMonth, currentYear);
+  if (!data.cycles[cycle]) data.cycles[cycle] = [];
+
+  let resolvedTotal = total;
+  if (!resolvedTotal && data.cycles[cycle].length) {
+    resolvedTotal = data.cycles[cycle][0].total;
+  }
+
+  data.cycles[cycle].push({ date, total: resolvedTotal||'', cleaned, supervisor:sup, team, remarks:rem });
+  saveData(currentSite, currentMonth, currentYear, data);
+  toast(`✓ Entry add ho gayi — Cycle ${cycle}`);
+  renderMain();
+}
+
+function deleteRow(cycle, idx) {
+  const data = getData(currentSite, currentMonth, currentYear);
+  data.cycles[cycle].splice(idx,1);
+  saveData(currentSite, currentMonth, currentYear, data);
+  toast('Entry delete ho gayi','var(--orange)');
+  renderMain();
+}
+
+// ── OTHER WORK ────────────────────────────────────────────────────────────
+function renderOtherWork(type, title) {
+  const configs = {
+    housekeeping: {
+      fields: [{id:'date',label:'Date',type:'date'},{id:'site',label:'Site',type:'sel_sites'},{id:'area',label:'Area / Location',type:'text',ph:'e.g. Inverter Room'},{id:'worktype',label:'Work Type',type:'text',ph:'Sweeping, Mopping, etc'},{id:'desc',label:'Description',type:'text',ph:'Kaam ka description'},{id:'assigned',label:'Assigned To',type:'text',ph:'Naam'},{id:'start',label:'Start Time',type:'time'},{id:'end',label:'End Time',type:'time'},{id:'status',label:'Status',type:'sel_status'},{id:'remarks',label:'Remarks',type:'text',ph:'Optional'}],
+      cols:['Date','Site','Area','Work Type','Desc','Assigned','Start','End','Status','Remarks']
+    },
+    grass: {
+      fields: [{id:'date',label:'Date',type:'date'},{id:'site',label:'Site',type:'sel_sites'},{id:'zone',label:'Zone / Area',type:'text',ph:'e.g. North Block'},{id:'area_sqm',label:'Area (Sq.Mtr)',type:'number',ph:'e.g. 500'},{id:'equipment',label:'Equipment',type:'text',ph:'e.g. Grass Cutter'},{id:'workers',label:'Workers',type:'number',ph:'e.g. 3'},{id:'start',label:'Start Time',type:'time'},{id:'end',label:'End Time',type:'time'},{id:'status',label:'Status',type:'sel_status'},{id:'remarks',label:'Remarks',type:'text',ph:'Optional'}],
+      cols:['Date','Site','Zone','Area Sq.Mtr','Equipment','Workers','Start','End','Status','Remarks']
+    },
+    maintenance: {
+      fields: [{id:'date',label:'Date',type:'date'},{id:'site',label:'Site',type:'sel_sites'},{id:'asset',label:'Equipment / Asset',type:'text',ph:'e.g. Inverter'},{id:'mtype',label:'Maint. Type',type:'sel_mtype'},{id:'fault',label:'Fault Description',type:'text',ph:'Problem kya hai'},{id:'action',label:'Action Taken',type:'text',ph:'Kya kiya'},{id:'spare',label:'Spare Part',type:'text',ph:'Optional'},{id:'cost',label:'Cost (₹)',type:'number',ph:'0'},{id:'tech',label:'Technician',type:'text',ph:'Naam'},{id:'status',label:'Status',type:'sel_mstatus'},{id:'remarks',label:'Remarks',type:'text',ph:'Optional'}],
+      cols:['Date','Site','Asset','Type','Fault','Action','Spare','Cost','Tech','Status','Remarks']
+    }
+  };
+  const cfg = configs[type];
+  const rows = getOther(type, currentMonth, currentYear);
+
+  const fieldsHTML = cfg.fields.map(f => {
+    let inp = '';
+    if (f.type==='date') inp=`<input type="date" id="ow_${f.id}" value="${new Date().toISOString().split('T')[0]}">`;
+    else if (f.type==='time') inp=`<input type="time" id="ow_${f.id}">`;
+    else if (f.type==='number') inp=`<input type="number" id="ow_${f.id}" placeholder="${f.ph||''}" min="0">`;
+    else if (f.type==='sel_sites') inp=`<select id="ow_${f.id}"><option value="">-- Site --</option>${SITES.map(s=>`<option value="${s}" ${s===currentSite?'selected':''}>${s}</option>`).join('')}</select>`;
+    else if (f.type==='sel_status') inp=`<select id="ow_${f.id}"><option>Pending</option><option>In Progress</option><option selected>Done</option><option>Cancelled</option></select>`;
+    else if (f.type==='sel_mtype') inp=`<select id="ow_${f.id}"><option>Preventive</option><option>Corrective</option><option>Emergency</option><option>Routine</option></select>`;
+    else if (f.type==='sel_mstatus') inp=`<select id="ow_${f.id}"><option>Pending</option><option>In Progress</option><option selected>Done</option><option>Deferred</option></select>`;
+    else inp=`<input type="text" id="ow_${f.id}" placeholder="${f.ph||''}">`;
+    return `<div class="field"><label>${f.label}</label>${inp}</div>`;
+  }).join('');
+
+  const tableRows = rows.length ? rows.map((r,i)=>`
+    <tr>${cfg.fields.map(f=>`<td>${r[f.id]||'—'}</td>`).join('')}
+    <td><button class="del-btn" onclick="deleteOtherRow('${type}',${i})">✕</button></td></tr>
+  `).join('') : `<tr><td colspan="${cfg.cols.length+1}" class="empty">Koi entry nahi</td></tr>`;
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="site-header">
+      <div>
+        <div class="site-title">${title}</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:2px;">${MONTHS[currentMonth]} ${currentYear}</div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-outline" onclick="showTab('cleaning')">← Cleaning</button>
+        <button class="btn btn-primary" onclick="exportExcel()">⬇ Excel</button>
+      </div>
+    </div>
+    <div class="work-form">
+      <h3><span class="section-icon">${title.split(' ')[0]}</span> Nayi Entry Add Karo</h3>
+      <div class="form-grid">${fieldsHTML}</div>
+      <button class="btn btn-success" style="margin-top:12px;" onclick="addOtherRow('${type}')">+ Entry Add Karo</button>
+    </div>
+    <div class="work-form">
+      <h3>📋 Entries — ${MONTHS[currentMonth]} ${currentYear}</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>${cfg.cols.map(c=>`<th>${c}</th>`).join('')}<th></th></tr></thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function addOtherRow(type) {
+  const cfg_fields = {
+    housekeeping:['date','site','area','worktype','desc','assigned','start','end','status','remarks'],
+    grass:['date','site','zone','area_sqm','equipment','workers','start','end','status','remarks'],
+    maintenance:['date','site','asset','mtype','fault','action','spare','cost','tech','status','remarks']
+  };
+  const fields = cfg_fields[type];
+  const row = {};
+  fields.forEach(f => { row[f] = document.getElementById(`ow_${f}`)?.value || ''; });
+  if (!row.date) { toast('Date zaroori hai!','var(--red)'); return; }
+  const rows = getOther(type, currentMonth, currentYear);
+  rows.push(row);
+  saveOther(type, currentMonth, currentYear, rows);
+  toast('✓ Entry add ho gayi!');
+  renderMain();
+}
+
+function deleteOtherRow(type, idx) {
+  const rows = getOther(type, currentMonth, currentYear);
+  rows.splice(idx,1);
+  saveOther(type, currentMonth, currentYear, rows);
+  toast('Entry delete ho gayi','var(--orange)');
+  renderMain();
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────
+function renderDashboard() {
+  let totalModules=0, totalCleaned=0, sitesStarted=0, cyclesComplete=0;
+  const siteProgress = [];
+
+  SITES.forEach(site => {
+    const d = getData(site, currentMonth, currentYear);
+    let sMods=0, sCleaned=0;
+    [1,2,3,4,5].forEach(c => {
+      const rows = d.cycles[c]||[];
+      if (rows.length && rows[0].total) { sMods += +rows[0].total||0; }
+      const cl = rows.reduce((s,r)=>s+(+r.cleaned||0),0);
+      sCleaned += cl;
+      if (sMods && cl >= sMods) cyclesComplete++;
+    });
+    totalModules += sMods; totalCleaned += sCleaned;
+    if (sMods) sitesStarted++;
+    siteProgress.push({site, mods:sMods, cleaned:sCleaned, pct: sMods?Math.round(sCleaned/sMods*100):0});
+  });
+
+  const overallPct = totalModules ? Math.round(totalCleaned/totalModules*100) : 0;
+  const totalSites = SITES.length;
+
+  const progressRows = siteProgress.sort((a,b)=>b.pct-a.pct).map(sp=>`
+    <div class="site-progress-row">
+      <span class="spn">${sp.site}</span>
+      <div class="sp-bar-wrap"><div class="sp-bar" style="width:${sp.pct}%;background:${sp.pct>=75?'var(--green)':sp.pct>=40?'var(--sun)':'var(--red)'}"></div></div>
+      <span class="sp-pct">${sp.pct}%</span>
+    </div>`).join('');
+
+  const hkRows = getOther('housekeeping',currentMonth,currentYear).length;
+  const gcRows = getOther('grass',currentMonth,currentYear).length;
+  const mwRows = getOther('maintenance',currentMonth,currentYear).length;
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="site-header">
+      <div>
+        <div class="site-title">📊 <span>Monthly Dashboard</span></div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:2px;">${MONTHS[currentMonth]} ${currentYear} — All ${totalSites} Sites</div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-outline" onclick="showTab('cleaning')">← Back</button>
+        <button class="btn btn-primary" onclick="exportExcel()">⬇ Export Excel</button>
+      </div>
+    </div>
+    <div class="dashboard-grid">
+      <div class="kpi-card">
+        <div class="kpi-title">Overall Progress</div>
+        <div class="kpi-val kpi-accent-sun">${overallPct}%</div>
+        <div class="kpi-sub">${totalCleaned.toLocaleString()} / ${totalModules.toLocaleString()} modules</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Sites Started</div>
+        <div class="kpi-val kpi-accent-green">${sitesStarted} <span style="font-size:18px;color:var(--text-dim)">/ ${totalSites}</span></div>
+        <div class="kpi-sub">Sites with active entries</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Cycles Complete</div>
+        <div class="kpi-val kpi-accent-blue">${cyclesComplete} <span style="font-size:18px;color:var(--text-dim)">/ ${totalSites*4}</span></div>
+        <div class="kpi-sub">Total cycles (${totalSites} × 4)</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">House Keeping Entries</div>
+        <div class="kpi-val kpi-accent-green">${hkRows}</div>
+        <div class="kpi-sub">This month</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Grass Cutting Entries</div>
+        <div class="kpi-val kpi-accent-sun">${gcRows}</div>
+        <div class="kpi-sub">This month</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Maintenance Work</div>
+        <div class="kpi-val kpi-accent-red">${mwRows}</div>
+        <div class="kpi-sub">This month</div>
+      </div>
+    </div>
+    <div class="sites-progress">
+      <h3>📍 Site-wise Cleaning Progress</h3>
+      ${progressRows || '<div class="empty">Abhi koi data nahi</div>'}
+    </div>
+    <div class="export-section">
+      <h3>📤 Export Options</h3>
+      <div class="export-grid">
+        <div class="export-card" onclick="exportExcel()">
+          <div class="ico">📊</div>
+          <div class="ec-title">Full Monthly Report</div>
+          <div class="ec-sub">Sabhi sheets with data</div>
+        </div>
+        <div class="export-card" onclick="exportExcel('cleaning')">
+          <div class="ico">☀️</div>
+          <div class="ec-title">Cleaning Only</div>
+          <div class="ec-sub">Module cleaning data</div>
+        </div>
+        <div class="export-card" onclick="backupAll()">
+          <div class="ico">💾</div>
+          <div class="ec-title">Backup JSON</div>
+          <div class="ec-sub">Saara data backup karo</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── EXCEL EXPORT ──────────────────────────────────────────────────────────
+function exportExcel(filter) {
+  const wb = XLSX.utils.book_new();
+  const mn = MONTHS[currentMonth]; const yr = currentYear;
+
+  // Sheet 1 - Module Cleaning
+  const cleanRows = [['Site','Cycle','Date','Total Modules','Cleaned','Pending','Progress %','Supervisor','Team','Remarks']];
+  SITES.forEach(site => {
+    const d = getData(site, currentMonth, currentYear);
+    [1,2,3,4,5].forEach(c => {
+      const rows = d.cycles[c]||[];
+      if (!rows.length) {
+        cleanRows.push([site,`Cycle ${c}`,'','','','','','','','']);
+        return;
+      }
+      let cumCleaned = 0;
+      const total = +rows[0].total||0;
+      rows.forEach(r => {
+        cumCleaned += +r.cleaned||0;
+        const pending = Math.max(0, total - cumCleaned);
+        const pct = total ? `${Math.round(cumCleaned/total*100)}%` : '0%';
+        cleanRows.push([site,`Cycle ${c}`,r.date,total,+r.cleaned||0,pending,pct,r.supervisor||'',r.team||'',r.remarks||'']);
+      });
+    });
+  });
+  const ws1 = XLSX.utils.aoa_to_sheet(cleanRows);
+  ws1['!cols'] = [{wch:14},{wch:9},{wch:12},{wch:14},{wch:12},{wch:12},{wch:12},{wch:14},{wch:8},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, ws1, 'Module Cleaning');
+
+  if (!filter || filter!=='cleaning') {
+    // Sheet 2 - HK
+    const hkRows = [['Date','Site','Area','Work Type','Description','Assigned To','Start','End','Status','Remarks']];
+    getOther('housekeeping',currentMonth,currentYear).forEach(r =>
+      hkRows.push([r.date,r.site,r.area,r.worktype,r.desc,r.assigned,r.start,r.end,r.status,r.remarks]));
+    const ws2 = XLSX.utils.aoa_to_sheet(hkRows);
+    XLSX.utils.book_append_sheet(wb, ws2, 'House Keeping');
+
+    // Sheet 3 - Grass
+    const gcRows = [['Date','Site','Zone','Area (Sq.Mtr)','Equipment','Workers','Start','End','Status','Remarks']];
+    getOther('grass',currentMonth,currentYear).forEach(r =>
+      gcRows.push([r.date,r.site,r.zone,r.area_sqm,r.equipment,r.workers,r.start,r.end,r.status,r.remarks]));
+    const ws3 = XLSX.utils.aoa_to_sheet(gcRows);
+    XLSX.utils.book_append_sheet(wb, ws3, 'Grass Cutting');
+
+    // Sheet 4 - Maintenance
+    const mwRows = [['Date','Site','Asset','Type','Fault','Action','Spare','Cost','Technician','Status','Remarks']];
+    getOther('maintenance',currentMonth,currentYear).forEach(r =>
+      mwRows.push([r.date,r.site,r.asset,r.mtype,r.fault,r.action,r.spare,r.cost,r.tech,r.status,r.remarks]));
+    const ws4 = XLSX.utils.aoa_to_sheet(mwRows);
+    XLSX.utils.book_append_sheet(wb, ws4, 'Maintenance Work');
+
+    // Sheet 5 - Summary
+    const sumRows = [['Site','Cycle 1 %','Cycle 2 %','Cycle 3 %','Cycle 4 %','Overall %']];
+    SITES.forEach(site => {
+      const d = getData(site,currentMonth,currentYear);
+      const pcts = [1,2,3,4,5].map(c => {
+        const rows = d.cycles[c]||[];
+        if (!rows.length || !rows[0].total) return '—';
+        const total = +rows[0].total;
+        const cleaned = rows.reduce((s,r)=>s+(+r.cleaned||0),0);
+        return `${Math.round(cleaned/total*100)}%`;
+      });
+      const allNums = pcts.filter(p=>p!=='—').map(p=>parseInt(p));
+      const overall = allNums.length ? `${Math.round(allNums.reduce((a,b)=>a+b,0)/allNums.length)}%` : '—';
+      sumRows.push([site,...pcts,overall]);
+    });
+    const ws5 = XLSX.utils.aoa_to_sheet(sumRows);
+    XLSX.utils.book_append_sheet(wb, ws5, 'Summary');
+  }
+
+  XLSX.writeFile(wb, `Solar_Plant_Report_${mn}_${yr}.xlsx`);
+  toast(`✅ ${mn} ${yr} Report download ho rahi hai!`);
+}
+
+// ── BACKUP ────────────────────────────────────────────────────────────────
+function backupAll() {
+  const backup = {};
+  for (let i=0; i<localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k.startsWith('spt_')) backup[k] = localStorage.getItem(k);
+  }
+  const blob = new Blob([JSON.stringify(backup,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `SolarPlant_Backup_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  toast('💾 Backup download ho gaya!');
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+initMonthSel();
+updateSidebarDots();
+renderMain();
+</script>
+</body>
+</html>
